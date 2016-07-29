@@ -1,16 +1,33 @@
 # express-jwt
 
-[![Build](https://travis-ci.org/auth0/express-jwt.png)](http://travis-ci.org/auth0/express-jwt)
+[![Build](https://travis-ci.org/auth0/express-jwt.svg)](http://travis-ci.org/auth0/express-jwt)
 
-Middleware that validates JsonWebTokens and sets `req.user`.
+Middleware that validates [JSON Web Tokens](https://jwt.io/) and sets `req.user`.
 
 This module lets you authenticate HTTP requests using JWT tokens in your Node.js
-applications.  JWTs are typically used to protect API endpoints, and are
+applications. JWTs are typically used to protect API endpoints, and are
 often issued using OpenID Connect.
 
-## Install
+## It's forked, whats different?
 
-    $ npm install express-jwt
+This module if forked form [express-jwt](https://github.com/auth0/express-jwt)
+made by @auth0.
+**Followings points where changed:**
+
+- removed dependency on [node-jsonwebtoken](https://github.com/auth0/node-jsonwebtoken)
+- rewritten to ES2016 using [babel transpiler](https://babeljs.io/)
+- now you can pass your own `decode` and `verify` functions for token decoding and verifying (see examples)
+  
+
+## TODO
+
+- update all examples according to the changes
+
+## Installing
+
+```bash
+npm install @pokusew/express-jwt --save --production
+```
 
 ## Usage
 
@@ -18,33 +35,43 @@ The JWT authentication middleware authenticates callers using a JWT.
 If the token is valid, `req.user` will be set with the JSON object decoded
 to be used by later middleware for authorization and access control.
 
+**Note**, that you must include `verify` and `decode` functions.
+You can use [node-jsonwebtoken](https://github.com/auth0/node-jsonwebtoken).
+
 For example,
 
 ```javascript
-var jwt = require('express-jwt');
+import jwt from 'jsonwebtoken';
+import expressJwt from '@pokusew/express-jwt';
 
-app.get('/protected',
-  jwt({secret: 'shhhhhhared-secret'}),
-  function(req, res) {
-    if (!req.user.admin) return res.sendStatus(401);
-    res.sendStatus(200);
-  });
+const protectMiddleware = expressJwt({
+	decode: jwt.decode,
+	verify: jwt.verify,
+	secret: 'shhhhhhared-secret',
+});
+
+app.get('/protected', protectMiddleware, function (req, res) {
+
+		if (!req.user.admin) {
+			return res.sendStatus(401);
+		}
+
+		res.sendStatus(200);
+	}
+);
 ```
+> You can specify another options that will be passed to verify function.
+So if you are using [node-jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) as this example,
+you can specify audience and/or issuer as well:
 
-You can specify audience and/or issuer as well:
-
-```javascript
-jwt({ secret: 'shhhhhhared-secret',
-  audience: 'http://myapi/protected',
-  issuer: 'http://issuer' })
-```
-
-> If the JWT has an expiration (`exp`), it will be checked.
-
-If you are using a base64 URL-encoded secret, pass a `Buffer` with `base64` encoding as the secret instead of a string:
-
-```javascript
-jwt({ secret: new Buffer('shhhhhhared-secret', 'base64') })
+> ```javascript
+const protectMiddleware = expressJwt({
+	decode: jwt.decode,
+	verify: jwt.verify,
+	secret: 'shhhhhhared-secret',
+	audience: 'http://myapi/protected',
+	issuer: 'http://issuer'
+});
 ```
 
 Optionally you can make some paths unprotected as follows:
@@ -57,19 +84,7 @@ This is especially useful when applying to multiple routes. In the example above
 
 > For more details on the `.unless` syntax including additional options, please see [express-unless](https://github.com/jfromaniello/express-unless).
 
-This module also support tokens signed with public/private key pairs. Instead of a secret, you can specify a Buffer with the public key
-
-```javascript
-var publicKey = fs.readFileSync('/path/to/public.pub');
-jwt({ secret: publicKey });
-```
-
 By default, the decoded token is attached to `req.user` but can be configured with the `requestProperty` option.
-
-
-```javascript
-jwt({ secret: publicKey, requestProperty: 'auth' });
-```
 
 A custom function for extracting the token from a request can be specified with
 the `getToken` option. This is useful if you need to pass the token through a
@@ -92,6 +107,7 @@ app.use(jwt({
 ```
 
 ### Multi-tenancy
+
 If you are developing an application in which the secret used to sign tokens is not static, you can provide a callback function as the `secret` parameter. The function has the signature: `function(req, payload, done)`:
 * `req` (`Object`) - The express `request` object.
 * `payload` (`Object`) - An object with the JWT claims.
@@ -126,6 +142,7 @@ app.get('/protected',
 ```
 
 ### Revoked tokens
+
 It is possible that some tokens will need to be revoked so they cannot be used any longer. You can provide a function as the `isRevoked` option. The signature of the function is `function(req, payload, done)`:
 * `req` (`Object`) - The express `request` object.
 * `payload` (`Object`) - An object with the JWT claims.
@@ -190,15 +207,17 @@ can do this by using the option _credentialsRequired_:
     $ npm test
 
 ## Contributors
-Check them out [here](https://github.com/auth0/express-jwt/graphs/contributors)
+
+Check them out [here](https://github.com/pokusew/express-jwt/graphs/contributors)
 
 ## Issue Reporting
 
-If you have found a bug or if you have a feature request, please report them at this repository issues section. Please do not report security vulnerabilities on the public GitHub issue tracker. The [Responsible Disclosure Program](https://auth0.com/whitehat) details the procedure for disclosing security issues.
+If you have found a bug or if you have a feature request, please report them at this repository issues section.
 
-## Author
+## Authors
 
-[Auth0](auth0.com)
+- this fork: [Martin Endler](https://github.com/pokusew)
+- original project: [Auth0](auth0.com)
 
 ## License
 

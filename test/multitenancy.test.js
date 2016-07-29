@@ -1,74 +1,93 @@
-var jwt = require('jsonwebtoken');
-var assert = require('assert');
+import jwt from 'jsonwebtoken';
+import assert from 'assert';
 
-var expressjwt = require('../lib');
-var UnauthorizedError = require('../lib/errors/UnauthorizedError');
+import expressjwt from '../lib';
+import UnauthorizedError from '../lib/errors/UnauthorizedError';
 
-describe('multitenancy', function(){
-  var req = {};
-  var res = {};
+describe('multitenancy', function () {
 
-  var tenants = {
-    'a': {
-      secret: 'secret-a'
-    }
-  };
+	let req = {};
+	let res = {};
 
-  var secretCallback = function(req, payload, cb){
-    var issuer = payload.iss;
-    if (tenants[issuer]){
-      return cb(null, tenants[issuer].secret);
-    }
+	const tenants = {
+		'a': {
+			secret: 'secret-a'
+		}
+	};
 
-    return cb(new UnauthorizedError('missing_secret',
-      { message: 'Could not find secret for issuer.' }));
-  };
+	const secretCallback = function (req, payload, cb) {
 
-  var middleware = expressjwt({
-    secret: secretCallback
-  });
+		const issuer = payload.iss;
 
-  it ('should retrieve secret using callback', function(){
-    var token = jwt.sign({ iss: 'a', foo: 'bar'}, tenants.a.secret);
+		if (tenants[issuer]) {
+			return cb(null, tenants[issuer].secret);
+		}
 
-    req.headers = {};
-    req.headers.authorization = 'Bearer ' + token;
+		return cb(
+			new UnauthorizedError('missing_secret', {
+				message: 'Could not find secret for issuer.'
+			})
+		);
 
-    middleware(req, res, function() {
-      assert.equal('bar', req.user.foo);
-    });
-  });
+	};
 
-  it ('should throw if an error ocurred when retrieving the token', function(){
-    var secret = 'shhhhhh';
-    var token = jwt.sign({ iss: 'inexistent', foo: 'bar'}, secret);
+	const middleware = expressjwt({
+		decode: jwt.decode,
+		verify: jwt.verify,
+		secret: secretCallback
+	});
 
-    req.headers = {};
-    req.headers.authorization = 'Bearer ' + token;
+	it('should retrieve secret using callback', function () {
 
-    middleware(req, res, function(err) {
-      assert.ok(err);
-      assert.equal(err.code, 'missing_secret');
-      assert.equal(err.message, 'Could not find secret for issuer.');
-    });
-  });
+		const token = jwt.sign({iss: 'a', foo: 'bar'}, tenants.a.secret);
 
-  it ('should fail if token is revoked', function(){
-    var token = jwt.sign({ iss: 'a', foo: 'bar'}, tenants.a.secret);
+		req.headers = {};
+		req.headers.authorization = 'Bearer ' + token;
 
-    req.headers = {};
-    req.headers.authorization = 'Bearer ' + token;
+		middleware(req, res, function () {
+			assert.equal('bar', req.user.foo);
+		});
 
-    var middleware = expressjwt({
-      secret: secretCallback,
-      isRevoked: function(req, payload, done){
-        done(null, true);
-      }
-    })(req, res, function(err) {
-      assert.ok(err);
-      assert.equal(err.code, 'revoked_token');
-      assert.equal(err.message, 'The token has been revoked.');
-    });
-  });
+	});
+
+	it('should throw if an error occurred when retrieving the token', function () {
+
+		const secret = 'shhhhhh';
+		const token = jwt.sign({iss: 'nonexistent', foo: 'bar'}, secret);
+
+		req.headers = {};
+		req.headers.authorization = 'Bearer ' + token;
+
+		middleware(req, res, function (err) {
+			assert.ok(err);
+			assert.equal(err.code, 'missing_secret');
+			assert.equal(err.message, 'Could not find secret for issuer.');
+		});
+
+	});
+
+	it('should fail if token is revoked', function () {
+
+		const token = jwt.sign({iss: 'a', foo: 'bar'}, tenants.a.secret);
+
+		req.headers = {};
+		req.headers.authorization = 'Bearer ' + token;
+
+		const middleware = expressjwt({
+			decode: jwt.decode,
+			verify: jwt.verify,
+			secret: secretCallback,
+			isRevoked: function (req, payload, done) {
+				done(null, true);
+			}
+		});
+
+		middleware(req, res, function (err) {
+			assert.ok(err);
+			assert.equal(err.code, 'revoked_token');
+			assert.equal(err.message, 'The token has been revoked.');
+		});
+
+	});
 });
 

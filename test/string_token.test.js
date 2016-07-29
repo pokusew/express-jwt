@@ -1,22 +1,32 @@
-var jwt = require('jsonwebtoken');
-var assert = require('assert');
+import jwt from 'jsonwebtoken';
+import assert from 'assert';
 
-var expressjwt = require('../lib');
-var UnauthorizedError = require('../lib/errors/UnauthorizedError');
+import expressjwt from '../lib';
+import UnauthorizedError from '../lib/errors/UnauthorizedError';
 
 describe('string tokens', function () {
-  var req = {};
-  var res = {};
 
-  it('should work with a valid string token', function() {
-    var secret = 'shhhhhh';
-    var token = jwt.sign('foo', secret);
+	let req = {};
+	let res = {};
 
-    req.headers = {};
-    req.headers.authorization = 'Bearer ' + token;
-    expressjwt({secret: secret})(req, res, function() {
-      assert.equal('foo', req.user);
-    });
-  });
+	it('should work with a valid string token', function () {
+
+		const secret = 'shhhhhh';
+		const token = jwt.sign('foo', secret);
+
+		req.headers = {};
+		req.headers.authorization = 'Bearer ' + token;
+
+		const middleware = expressjwt({
+			decode: jwt.decode,
+			verify: jwt.verify,
+			secret: secret
+		});
+
+		middleware(req, res, function () {
+			assert.equal('foo', req.user);
+		});
+
+	});
 
 });
